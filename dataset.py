@@ -29,6 +29,19 @@ class Image2ImageDataset(chainer.dataset.DatasetMixin):
     def get_name(self, i):
         return self._filelist[i]
 
+    def pre_proc(self, img):
+        ##add channel if image is grayscale
+        #if img.ndim == 2:
+        #    img = img[:, :, np.newaxis]
+        img = img/128.0 - 1.0
+        return img.transpose(2, 0, 1)
+
+    def post_proc(self, img):
+        img = (img+1.0) * 128.0 
+        img = np.uint8(img)      
+        img = np.clip(img, 0, 255)
+        return img.transpose(1,2,0)
+
     def get_example(self, i):
         #read image from filelist
         path1 = os.path.join(self._src_path, self._filelist[i])
@@ -53,26 +66,16 @@ class Image2ImageDataset(chainer.dataset.DatasetMixin):
         src_img = np.asarray(src_img, self._dtype)
         dst_img = np.asarray(dst_img, self._dtype)
 
-        #normalize
-        src_img = src_img/128.0 -1.0 
-        dst_img = dst_img/128.0 -1.0 
-
-        # add random noise
+        # add random noise at src
         if self._train:
             noise = np.random.normal(
-                0, 0.1 * np.random.rand(), src_img.shape).astype(self._dtype)
-            noise += np.random.normal(0, 0.2)
+                0, 10 * np.random.rand(), src_img.shape).astype(self._dtype)
+            noise += np.random.normal(0, 30)
             src_img += noise
 
-        #add channel if image is grayscale
-        if src_img.ndim == 2:
-            src_img = src_img[:, :, np.newaxis]
-        if dst_img.ndim == 2:
-            dst_img = dst_img[:, :, np.newaxis]
 
-        #transpose
-        src = src_img.transpose(2, 0, 1)
-        dst = dst_img.transpose(2, 0, 1)
+        src = self.pre_proc(src_img)
+        dst = self.pre_proc(dst_img)
 
         return src, dst
 

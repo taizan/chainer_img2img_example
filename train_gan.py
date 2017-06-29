@@ -24,14 +24,16 @@ os.environ["CHAINER_TYPE_CHECK"] = "0"
 
 def main():
     parser = argparse.ArgumentParser(description='chainer example of img2img learning')
-    parser.add_argument('--batchsize', '-b', type=int, default=16,
+    parser.add_argument('--batchsize', '-b', type=int, default=1,
                         help='Number of images in each mini-batch')
-    parser.add_argument('--epoch', '-e', type=int, default=20,
+    parser.add_argument('--epoch', '-e', type=int, default=100,
                         help='Number of sweeps over the dataset to train')
     parser.add_argument('--gpu', '-g', type=int, default=-1,
                         help='GPU ID (negative value indicates CPU)')
     parser.add_argument('--out', '-o', default='result',
                         help='Directory to output the result')
+    parser.add_argument('--filelist', '-fl', default='filelist.dat',
+                        help='filelist of dataset')
     parser.add_argument('--resume', '-r', default='',
                         help='Resume the training from snapshot')
     parser.add_argument('--snapshot_interval', type=int, default=10000,
@@ -43,30 +45,25 @@ def main():
     print('# epoch: {}'.format(args.epoch))
     print('')
 
-
-    if args.gpu >= 0:
-        chainer.cuda.get_device(args.gpu).use()  # Make a specified GPU current
-
     cnn = net.AutoENC()
     #serializers.load_npz("result/model_iter_xxx", cnn)
 
     dis = net.DIS()
     #serializers.load_npz("result/model_dis_iter_xxx", dis)
 
-
-    dataset = Image2ImageDataset("filelist.dat", train=True)
+    dataset = Image2ImageDataset(args.filelist, train=True)
 
     train_iter = chainer.iterators.SerialIterator( dataset , args.batchsize)
 
     if args.gpu >= 0:
+        chainer.cuda.get_device(args.gpu).use()  # Make a specified GPU current
         cnn.to_gpu()  # Copy the model to the GPU
         dis.to_gpu()  # Copy the model to the GPU
-        #l.to_gpu()
 
     # Setup optimizer parameters.
-    opt = optimizers.Adam(alpha=0.00001)
+    opt = optimizers.Adam(alpha=0.0001) #alpha is laerning rate
     opt.setup(cnn)
-    opt.add_hook(chainer.optimizer.WeightDecay(1e-5), 'hook_cnn')
+    opt.add_hook(chainer.optimizer.WeightDecay(1e-5), 'hook_cnn')# set weight decay 
    
     opt_d = chainer.optimizers.Adam(alpha=0.00001)
     opt_d.setup(dis)
@@ -77,8 +74,7 @@ def main():
     updater = ganUpdater(
         models=(cnn, dis),
         iterator={
-            'main': train_iter,
-            #'test': test_iter
+            'main': train_iter
              },
         optimizer={
             'cnn': opt,  
@@ -88,14 +84,18 @@ def main():
     trainer = training.Trainer(updater, (args.epoch, 'epoch'), out=args.out)
 
     snapshot_interval = (args.snapshot_interval, 'iteration') 
-    trainer.extend(extensions.dump_graph('cnn/loss'))
-    trainer.extend(extensions.snapshot(), trigger=snapshot_interval)
+
+    # save snapshot of objects
     trainer.extend(extensions.snapshot_object(
         cnn, 'model_iter_{.updater.iteration}'), trigger=snapshot_interval)
     trainer.extend(extensions.snapshot_object(
         dis, 'model_dis_iter_{.updater.iteration}'), trigger=snapshot_interval)
-    trainer.extend(extensions.snapshot_object(
-        opt, 'optimizer_'), trigger=snapshot_interval)
+    #trainer.extend(extensions.snapshot(), trigger=snapshot_interval)
+    #trainer.extend(extensions.snapshot_object(
+    #    opt, 'optimizer_'), trigger=snapshot_interval)
+
+    # setting of log report
+    trainer.extend(extensions.dump_graph('cnn/loss'))
     trainer.extend(extensions.LogReport( trigger=(20, 'iteration'), ))
     trainer.extend(extensions.PrintReport(
         ['epoch', 'cnn/loss', 'cnn/loss_rec','cnn/loss_adv','cnn/loss_l','dis/loss']))
@@ -108,8 +108,11 @@ def main():
         chainer.serializers.load_npz(args.resume, trainer)
 
     # Save the trained model
+    print("save result...")
     chainer.serializers.save_npz(os.path.join(args.out, 'model_final'), cnn)
-    chainer.serializers.save_npz(os.path.join(args.out, 'optimizer_final'), opt)
+    chainer.serializers.save_npz(os.path.join(args.out, 'dis_final'), dis)
+    #chainer.serializers.save_npz(os.path.join(args.out, 'optimizer_final'), opt)
+    print("finish")
 
 
 
@@ -147,6 +150,7 @@ class ganUpdater(chainer.training.StandardUpdater):
         batchsize = len(batch)
         x_in = []
         dst = []
+
         for i in range(batchsize):
             x_in.append(batch[i][0])
             dst.append(batch[i][1])

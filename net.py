@@ -62,13 +62,13 @@ class AutoENC(chainer.Chain):
 
         return x_out
 
-class LossEval(chainer.Link):
+class LossEval(chainer.Chain):
 
     def __init__(self, model, lossfunc=F.mean_absolute_error ):
         super(LossEval, self).__init__()
         self.lossfunc = lossfunc
         with self.init_scope():
-            self.model = model
+            self.model = model 
 
     def __call__(self, *args):
         assert len(args) >= 2

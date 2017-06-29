@@ -40,12 +40,7 @@ def main():
     print('# epoch: {}'.format(args.epoch))
     print('')
 
-
-    if args.gpu >= 0:
-        chainer.cuda.get_device(args.gpu).use()  # Make a specified GPU current
-
-    cnn = net.AutoENC()
-    model = net.LossEval(cnn)
+    nn = net.LossEval( net.AutoENC() )
     #serializers.load_npz("result/model_iter_xxx", cnn)i
 
     dataset = Image2ImageDataset("filelist.dat", train=True)
@@ -53,30 +48,32 @@ def main():
     train_iter = chainer.iterators.SerialIterator( dataset , args.batchsize)
 
     if args.gpu >= 0:
-        cnn.to_gpu()  # Copy the model to the GPU
+        chainer.cuda.get_device(args.gpu).use()  # Make a specified GPU current
         model.to_gpu()  # Copy the model to the GPU
 
     # Setup optimizer parameters.
-    opt = optimizers.Adam(alpha=0.00001)
+    opt = optimizers.Adam(alpha=0.0001) #alpha is laerning rate
     opt.setup(model)
-    opt.add_hook(chainer.optimizer.WeightDecay(1e-5), 'hook_cnn')
+    opt.add_hook(chainer.optimizer.WeightDecay(1e-5), 'hook_cnn')# set weight decay 
    
     # Set up a trainer
     updater = training.StandardUpdater(train_iter, opt , device=args.gpu)
-
     trainer = training.Trainer(updater, (args.epoch, 'epoch'), out=args.out)
 
+    # save snapshot of model
     snapshot_interval = (args.snapshot_interval, 'iteration') 
+    trainer.extend(extensions.snapshot_object(
+        nn.model, 'model_iter_{.updater.iteration}'), trigger=snapshot_interval)
+    
+    # log report settings
     trainer.extend(extensions.dump_graph('main/loss'))
-    trainer.extend(extensions.snapshot(), trigger=snapshot_interval)
-    trainer.extend(extensions.snapshot_object(
-        cnn, 'model_iter_{.updater.iteration}'), trigger=snapshot_interval)
-    trainer.extend(extensions.snapshot_object(
-        opt, 'optimizer_'), trigger=snapshot_interval)
     trainer.extend(extensions.LogReport( trigger=(20, 'iteration'), ))
     trainer.extend(extensions.PrintReport(
         ['epoch', 'main/loss']))
     trainer.extend(extensions.ProgressBar(update_interval=20))
+    #trainer.extend(extensions.snapshot(), trigger=snapshot_interval)
+    #trainer.extend(extensions.snapshot_object(
+    #    opt, 'optimizer_'), trigger=snapshot_interval)
 
     trainer.run()
 
@@ -85,8 +82,9 @@ def main():
         chainer.serializers.load_npz(args.resume, trainer)
 
     # Save the trained model
-    chainer.serializers.save_npz(os.path.join(args.out, 'model_final'), cnn)
-    chainer.serializers.save_npz(os.path.join(args.out, 'optimizer_final'), opt)
+    print("save result...")
+    chainer.serializers.save_npz(os.path.join(args.out, 'model_final'), nn.model)
+    print("finish")
 
 
 if __name__ == '__main__':
