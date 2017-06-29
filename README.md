@@ -6,13 +6,11 @@ usage:
     train.py -g 0 -b 4 -e 1000
     train_gan.py -g 0 -b 4 -e 1000
  
--g : GPU No. to use
+-g : GPU No. to use <br>
+-b : batch size for 1 iteration <br>
+-e : epoch number to run <br>
 
--b : batch size for 1 iteration
-
--e : epoch number to run
-
-dataset.py : define dataset for src img to dst img.
-net.py : define network of cnn
-train.py : train code for basic loss
-train_gan.py : train code for gan loss
+dataset.py : define dataset for src img to dst img. <br>
+net.py : define network of cnn. <br>
+train.py : train code for basic loss.  <br>
+train_gan.py : train code for gan loss. <br>
