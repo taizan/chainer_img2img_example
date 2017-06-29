@@ -31,6 +31,8 @@ def main():
                         help='Directory to output the result')
     parser.add_argument('--resume', '-r', default='',
                         help='Resume the training from snapshot')
+    parser.add_argument('--filelist', '-fl', default='',
+                        help='filelist of dataset')
     parser.add_argument('--snapshot_interval', type=int, default=10000,
                         help='Interval of snapshot')
     args = parser.parse_args()
@@ -49,11 +51,11 @@ def main():
 
     if args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()  # Make a specified GPU current
-        model.to_gpu()  # Copy the model to the GPU
+        nn.to_gpu()  # Copy the model to the GPU
 
     # Setup optimizer parameters.
     opt = optimizers.Adam(alpha=0.0001) #alpha is laerning rate
-    opt.setup(model)
+    opt.setup(nn)
     opt.add_hook(chainer.optimizer.WeightDecay(1e-5), 'hook_cnn')# set weight decay 
    
     # Set up a trainer
