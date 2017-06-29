@@ -7,7 +7,9 @@ usage:
     train_gan.py -g 0 -b 4 -e 1000
  
 -g : GPU No. to use
+
 -b : batch size for 1 iteration
+
 -e : epoch number to run
 
 dataset.py : define dataset for src img to dst img.
