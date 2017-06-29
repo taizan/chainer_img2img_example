@@ -2,8 +2,9 @@
 an example of chainer learning code
 
 usage:
-     train.py -g 0 -b 4 -e 1000
-     train_gan.py -g 0 -b 4 -e 1000
+
+    train.py -g 0 -b 4 -e 1000
+    train_gan.py -g 0 -b 4 -e 1000
  
 -g : GPU No. to use
 -b : batch size for 1 iteration
