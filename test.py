@@ -42,7 +42,10 @@ def main():
     if args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()  # Make a specified GPU current
 
-    cnn = net.AutoENC()
+    with chainer.no_backprop_mode():
+        with chainer.using_config('train', False):
+            cnn = net.AutoENC()
+    
     serializers.load_npz(args.model, cnn)
 
     if args.gpu >= 0:
